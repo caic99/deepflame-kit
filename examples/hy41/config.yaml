@@ -51,8 +51,8 @@ trainer:
   gradient_clip_val: null
   gradient_clip_algorithm: null
   check_val_every_n_epoch: 1
-  max_epochs: -1
-  max_steps: 400
+  max_epochs: 400
+  max_steps: null
   max_time: null
   detect_anomaly: false # Debug
   logger:
