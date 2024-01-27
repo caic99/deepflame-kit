@@ -1,0 +1,103 @@
+# lightning.pytorch==2.1.3
+seed_everything: 42 # Magic number
+model:
+  n_species: 41 # Should match with dataset
+  enc_size:
+    - 256
+    # - 512
+  dec_size:
+    - 512
+    - 256
+    - 128
+ckpt_path: null
+
+data:
+  batch_size: 4096
+  num_workers: 6
+  lmbda: 0.1 # For lambda of box-cox transformation
+
+  # data_path: dataset.npy
+  # config_path: HyChem41s.yaml
+  # formation_enthalpies_path: formation_enthalpies.npy
+
+# https://pytorch.org/docs/stable/optim.html
+optimizer:
+  class_path: AdamW
+  init_args:
+    lr: 5e-6
+lr_scheduler:
+  # https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.ReduceLROnPlateau.html
+  class_path: ReduceLROnPlateau
+  init_args:
+    monitor: val_loss # train_loss, val_loss
+    mode: min
+    factor: 0.5
+    patience: 2
+    min_lr: 1e-7
+    verbose: true
+  # class_path: StepLR
+  # init_args:
+  #   step_size: 10
+  #   gamma: 0.5
+  #   verbose: true
+
+# > python main.py fit --config config.yaml --trainer.max_epochs 100
+
+# https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.trainer.trainer.Trainer.html
+trainer:
+  fast_dev_run: false # Debug
+  precision: null # 16-mixed
+  accumulate_grad_batches: 1
+  gradient_clip_val: null
+  gradient_clip_algorithm: null
+  check_val_every_n_epoch: 1
+  max_epochs: -1
+  max_steps: 400
+  max_time: null
+  detect_anomaly: false # Debug
+  logger:
+    class_path: lightning.pytorch.loggers.WandbLogger
+    init_args:
+      project: dfnn
+      mode: disabled # Debug
+  log_every_n_steps: null
+  val_check_interval: null
+
+  accelerator: auto
+  strategy: auto
+  devices: auto
+  num_nodes: 1
+  callbacks:
+    - class_path: EarlyStopping
+      init_args:
+        monitor: train_loss
+        mode: min
+        patience: 5
+        verbose: true
+    - class_path: ModelCheckpoint
+      init_args:
+        monitor: val_loss
+        mode: min
+        save_top_k: 1
+        verbose: true
+  min_epochs: null
+  min_steps: null
+  limit_train_batches: null
+  limit_val_batches: null
+  limit_test_batches: null
+  limit_predict_batches: null
+  overfit_batches: 0.0
+  num_sanity_val_steps: null
+  enable_checkpointing: null
+  enable_progress_bar: null
+  enable_model_summary: null
+  deterministic: null
+  benchmark: null
+  inference_mode: true
+  use_distributed_sampler: true
+  profiler: null
+  barebones: false
+  plugins: null
+  sync_batchnorm: false
+  reload_dataloaders_every_n_epochs: 0
+  default_root_dir: null
