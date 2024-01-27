@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deepflame-kit"
+version = "0.0.1"
+dependencies = [
+  "lightning",
+  "torch",
+]
+
+authors = [
+  { name="Chun Cai", email="amoycaic@gmail.com" },
+]
+
+description = "A deep learning package for reacting flow"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/caic99/deepflame-kit"
+Issues = "https://github.com/caic99/deepflame-kit/issues"
+
+[project.scripts]
+deepflame = "deepflame.main:cli_main"

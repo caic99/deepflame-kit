@@ -2,8 +2,9 @@ import torch
 from torch import nn
 import lightning as L
 
-from model import MLP
-from data import DFDataSet
+from deepflame.model import MLP
+from deepflame.data import DFDataSet
+
 
 class DFNN(L.LightningModule):
     def __init__(

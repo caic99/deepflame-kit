@@ -5,14 +5,19 @@ DeepFlame-kit is a deep learning package for reacting flow.
 ### Install
 
 ```bash
-conda create -n pl lightning pytorch pytorch-cuda -c pytorch -c nvidia -c conda-forge
-conda activate pl
-pip install "jsonargparse[all]" wandb
+# Create a new virtual environment
+# conda create -n pl lightning pytorch pytorch-cuda -c pytorch -c nvidia -c conda-forge
+# conda activate pl
+
+git clone https://github.com/caic99/deepflame-kit.git
+cd deepflame-kit
+pip install . -e
+pip install "jsonargparse[all]" wandb # optional
 ```
 
 ### train
 
 ```bash
-python ../../deepflame/main.py fit --config config.yaml --trainer.max_epochs 100
-# Append args if needed
+deepflame fit --config config.yaml \
+    --trainer.max_epochs 100 # Append args if needed
 ```

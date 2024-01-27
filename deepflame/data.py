@@ -5,7 +5,8 @@ from torch.utils.data import Dataset, DataLoader, random_split
 import lightning as L
 import yaml
 
-from utils import boxcox, inv_boxcox
+from deepflame.utils import boxcox, inv_boxcox
+
 
 class DFDataSet(Dataset):
     def __init__(

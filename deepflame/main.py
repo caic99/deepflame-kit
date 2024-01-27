@@ -1,6 +1,7 @@
 from lightning.pytorch.cli import LightningCLI
-from trainer import DFNN
-from data import DFDataModule
+from deepflame.trainer import DFNN
+from deepflame.data import DFDataModule
+
 
 def cli_main():
     # CSVLogger supports auto versioning;
