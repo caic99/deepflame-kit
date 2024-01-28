@@ -6,7 +6,12 @@ from deepflame.data import DFDataModule
 def cli_main():
     # CSVLogger supports auto versioning;
     # WandbLogger does not, but stores hyperparameters in its own config file.
-    cli = LightningCLI(DFNN, DFDataModule, save_config_callback=None)
+    cli = LightningCLI(
+        DFNN,
+        DFDataModule,
+        parser_kwargs={"default_config_files": ["config.yaml"]},
+        save_config_callback=None,
+    )
 
 
 if __name__ == "__main__":
