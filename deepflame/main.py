@@ -1,5 +1,5 @@
 from lightning.pytorch.cli import LightningCLI
-from deepflame.trainer import DFNN
+from deepflame.model import DFNN
 from deepflame.data import DFDataModule
 
 

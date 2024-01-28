@@ -5,7 +5,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 import lightning as L
 import yaml
 
-from deepflame.utils import boxcox, inv_boxcox
+from deepflame.utils import boxcox, inv_boxcox, normalize
 
 
 class DFDataSet(Dataset):
@@ -52,23 +52,19 @@ class DFDataSet(Dataset):
 
         # Notation: Y -- boxcox --> Y_t -- norm --> Y_norm, Y_t_mean, Y_t_std
         self.lmbda = lmbda
-        self.transform = lambda x: boxcox(x, lmbda)
-        self.inv_transform = lambda y: inv_boxcox(y, lmbda)
-        self.norm = (
-            lambda x, mean, std: (x - mean) / std
-        )  # TODO: handle the case for std=0
-        self.denorm = lambda y, mean, std: y * std + mean
+        self.transform = boxcox
+        self.inv_transform = inv_boxcox
 
         Y_in_t = boxcox(self.Y_in, lmbda)
         self.Y_in_t_mean = Y_in_t.mean(axis=0)
         self.Y_in_t_std = Y_in_t.std(axis=0, ddof=1)
-        Y_in_norm = self.norm(
+        Y_in_norm = normalize(
             self.transform(self.Y_in), self.Y_in_t_mean, self.Y_in_t_std
         )
         Y_gt_t = boxcox(self.Y_gt, lmbda)
         self.Y_gt_t_mean = Y_gt_t.mean(axis=0)
         self.Y_gt_t_std = Y_gt_t.std(axis=0, ddof=1)
-        Y_gt_norm = self.norm(
+        Y_gt_norm = normalize(
             self.transform(self.Y_gt), self.Y_gt_t_mean, self.Y_gt_t_std
         )
 

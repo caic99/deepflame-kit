@@ -2,43 +2,17 @@ import torch
 from torch import nn
 import lightning as L
 
-from deepflame.model import MLP
 from deepflame.data import DFDataSet
+from deepflame.utils import normalize, denormalize, boxcox, inv_boxcox
 
 
-class DFNN(L.LightningModule):
-    def __init__(
-        self,
-        n_species: int = 41,
-        enc_size: list[int] = [256, 512],
-        dec_size: list[int] = [512, 256],
-    ):  # TODO: add inert gas index
+class Trainer(L.LightningModule):
+    dataset: DFDataSet
+    model: torch.nn.Module
+    trainer: L.Trainer
+
+    def __init__(self):
         super().__init__()
-        self.example_input_array = torch.zeros(1, 2 + n_species).split(
-            [1, 1, n_species], dim=1
-        )
-
-        enc = MLP(
-            [
-                2 + n_species,
-                *enc_size,
-            ]
-        )
-        dec = nn.ModuleList(
-            [MLP([enc_size[-1], *dec_size, 1]) for _ in range(n_species)]
-        )
-        dec.forward = lambda x: torch.stack([m(x) for m in dec], dim=2).squeeze()
-        self.model = nn.Sequential(
-            enc, dec
-        )  # Forward: cat(T,P,Y_norm) of shape [batch, 2+ns] -> Y_delta[batch, ns]
-
-        # # The old ways
-        # layers = [2 + n_species, 400, 200, 100, 1]
-        # self.model = nn.Modulelist([MLP(layers) for _ in range(n_species)])
-        # self.model.forward = lambda x: torch.stack([m(x) for m in self.model], dim=2).squeeze()
-
-        print(self.model)
-        self.save_hyperparameters()
 
     # def configure_optimizers(self):
     #     optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
@@ -49,7 +23,7 @@ class DFNN(L.LightningModule):
 
     def setup(self, stage):
         # Transfer metadata to device
-        self.dataset: DFDataSet = self.trainer.datamodule.dataset  # type: ignore
+        self.dataset = self.trainer.datamodule.dataset  # type: ignore
         for i in [
             "formation_enthalpies",
             "Y_in_t_mean",
@@ -75,32 +49,6 @@ class DFNN(L.LightningModule):
 
         # TODO: test pipeline
 
-    @torch.compile()
-    def forward(self, T_in, P_in, Y_in):
-        # see `DFDataset.__init__()` for normalization method.
-        # Should take raw data as input for prediction;
-        # TODO: move the use of self.dataset to self.model
-        P_in -= self.model.P
-        # T_in -= self.model.T # TODO: normalize T
-        Y_in_t = self.dataset.transform(Y_in)
-        Y_in_norm = self.dataset.norm(
-            Y_in_t,
-            self.model.Y_in_t_mean,
-            self.model.Y_in_t_std,
-        )
-        Y_pred_t_delta_norm = self.model(torch.cat([T_in, P_in, Y_in_norm], dim=1))
-
-        Y_pred_t_delta = self.dataset.denorm(
-            Y_pred_t_delta_norm,
-            self.model.Y_t_delta_mean,
-            self.model.Y_t_delta_std,
-        )
-        Y_pred_t = Y_in_t + Y_pred_t_delta
-        return Y_pred_t
-        Y_pred = self.dataset.inv_transform(Y_pred_t)
-        Y_pred[Y_pred < 0] = 0
-        return Y_pred
-
     def training_step(self, batch, batch_idx):
         (
             T_in,
@@ -116,10 +64,10 @@ class DFNN(L.LightningModule):
         Y_pred_t = self.forward(T_in, P_in, Y_in)
         criterion = nn.L1Loss()
 
-        Y_gt_t = self.dataset.transform(Y_gt)
+        Y_gt_t = boxcox(Y_gt)
         loss1 = criterion(Y_pred_t, Y_gt_t)
 
-        Y_pred = self.dataset.inv_transform(Y_pred_t)
+        Y_pred = inv_boxcox(Y_pred_t)
         Y_pred_sum = Y_pred.sum(axis=1)
         loss2 = criterion(
             Y_pred_sum,

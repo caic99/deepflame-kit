@@ -6,3 +6,12 @@ def boxcox(
 
 def inv_boxcox(y, lmbda=0.05):
     return (y * lmbda + 1) ** (1 / lmbda)  # if lmbda != 0 else exp(x)
+
+
+def normalize(x, mean, std):
+    # TODO:handle the case for std = 0
+    return (x - mean) / std
+
+
+def denormalize(y, mean, std):
+    return y * std + mean

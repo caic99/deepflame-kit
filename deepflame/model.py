@@ -1,4 +1,8 @@
+import torch
 from torch import nn
+
+from deepflame.trainer import Trainer
+from deepflame.utils import normalize, denormalize, boxcox, inv_boxcox
 
 class MLP(nn.Sequential):
     # https://pytorch.org/rl/_modules/torchrl/modules/models/models.html#MLP
@@ -10,3 +14,61 @@ class MLP(nn.Sequential):
             if i != depth - 1:
                 layers.append(activation())
         super().__init__(*layers)
+
+
+class DFNN(Trainer):
+    def __init__(
+        self,
+        n_species: int = 41,
+        enc_size: list[int] = [256, 512],
+        dec_size: list[int] = [512, 256],
+    ):  # TODO: add inert gas index
+        super().__init__()
+        self.example_input_array = torch.zeros(1, 2 + n_species).split(
+            [1, 1, n_species], dim=1
+        )
+
+        enc = MLP(
+            [
+                2 + n_species,
+                *enc_size,
+            ]
+        )
+        dec = nn.ModuleList(
+            [MLP([enc_size[-1], *dec_size, 1]) for _ in range(n_species)]
+        )
+        dec.forward = lambda x: torch.stack([m(x) for m in dec], dim=2).squeeze()
+        self.model = nn.Sequential(
+            enc, dec
+        )  # Forward: cat(T,P,Y_norm) of shape [batch, 2+ns] -> Y_delta[batch, ns]
+
+        # # The old ways
+        # layers = [2 + n_species, 400, 200, 100, 1]
+        # self.model = nn.Modulelist([MLP(layers) for _ in range(n_species)])
+        # self.model.forward = lambda x: torch.stack([m(x) for m in self.model], dim=2).squeeze()
+
+        print(self.model)
+        self.save_hyperparameters()
+
+    # @torch.compile()
+    def forward(self, T_in, P_in, Y_in):
+        P_in -= self.model.P
+        # T_in -= self.model.T # TODO: normalize T
+        Y_in_t = boxcox(Y_in)
+        Y_in_norm = normalize(
+            Y_in_t,
+            self.model.Y_in_t_mean,
+            self.model.Y_in_t_std,
+        )
+        Y_pred_t_delta_norm = self.model(torch.cat([T_in, P_in, Y_in_norm], dim=1))
+
+        Y_pred_t_delta = denormalize(
+            Y_pred_t_delta_norm,
+            self.model.Y_t_delta_mean,
+            self.model.Y_t_delta_std,
+        )
+        Y_pred_t = Y_in_t + Y_pred_t_delta
+        return Y_pred_t
+        Y_pred = inv_boxcox(Y_pred_t)
+        Y_pred[Y_pred < 0] = 0
+        return Y_pred
