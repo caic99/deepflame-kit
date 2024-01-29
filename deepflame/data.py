@@ -127,4 +127,7 @@ class DFDataModule(L.LightningDataModule):
     def test_dataloader(self):
         return DataLoader(self.test_set, **self.dataloader_kwargs)
 
-    # TODO: predict_dataloader
+    # def predict_dataloader(self):
+    #     # TODO: predict_dataloader
+    #     return DataLoader(self.test_set, **self.dataloader_kwargs)
+    #     # return a mocked dataloader

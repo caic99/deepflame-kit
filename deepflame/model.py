@@ -16,7 +16,7 @@ class MLP(nn.Sequential):
         super().__init__(*layers)
 
 
-class DFNN(Trainer):
+class DFNN(Trainer): # It is possible to use nn.Module as the base class
     def __init__(
         self,
         n_species: int = 41,
@@ -48,11 +48,12 @@ class DFNN(Trainer):
         # self.model.forward = lambda x: torch.stack([m(x) for m in self.model], dim=2).squeeze()
 
         print(self.model)
-        self.save_hyperparameters()
+        # torch.compile(self.model) # TODO: add config on torch.compile
+        self.save_hyperparameters() # available if using LightningModule as base class
 
     # @torch.compile()
     def forward(self, T_in, P_in, Y_in):
-        P_in -= self.model.P
+        P_in /= 101325.
         # T_in -= self.model.T # TODO: normalize T
         Y_in_t = boxcox(Y_in)
         Y_in_norm = normalize(

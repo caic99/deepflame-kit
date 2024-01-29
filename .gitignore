@@ -163,3 +163,4 @@ cython_debug/
 *.npy
 # Training log
 dfnn/
+lightning_logs/
