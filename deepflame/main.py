@@ -9,10 +9,11 @@ def cli_main():
     cli = LightningCLI(
         DFNN,
         DFDataModule,
-        parser_kwargs={"default_config_files": ["config.yaml"]},
         save_config_callback=None,
     )
 
+
+# TODO - multiple model support: https://lightning.ai/docs/pytorch/stable/cli/lightning_cli_intermediate_2.html#classes-from-any-package
 
 if __name__ == "__main__":
     cli_main()
