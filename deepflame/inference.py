@@ -7,12 +7,13 @@ Usage:
 """
 
 
+import numpy as np
 import torch
 import yaml
 from deepflame.utils import inv_boxcox
 
 
-def parse_properties(config_path: str) -> dict:
+def parse_properties(config_path) -> dict:
     with open(config_path, "r") as f:
         data = f.read()
         # remove comments marked with /* and */
@@ -60,7 +61,6 @@ def parse_properties(config_path: str) -> dict:
 
 
 def load_lightning_model(
-    property_config_path="/root/DeepFlame-examples/1Dflame/Tu800K-Phi1.0/constant/CanteraTorchProperties",
     model_config_path="/root/deepflame-kit/examples/hy41/config.yaml",
     checkpoint_path="/root/deepflame-kit/examples/hy41/dfnn/bbfus18q/checkpoints/epoch=2-step=207.ckpt",
 ) -> torch.nn.Module:
@@ -68,8 +68,6 @@ def load_lightning_model(
     from deepflame.data import DFDataModule
     from deepflame.model import DFNN
 
-    property_config = parse_properties(property_config_path)
-    settings = property_config["TorchSettings"]
     assert (
         settings["torch"] == True
     ), f"torch is not set to 'on' in {property_config_path}"
@@ -95,27 +93,38 @@ def load_lightning_model(
     return cli.model
 
 
+property_config_path = (
+    "~/DeepFlame-examples/1Dflame/Tu800K-Phi1.0/constant/CanteraTorchProperties"
+)
+
+property_config = parse_properties(property_config_path)
+settings = property_config["TorchSettings"]
+
 # Inference API: https://github.com/deepmodeling/deepflame-dev/blob/master/src/dfChemistryModel/pytorchFunctions.H
 # Currently `inference()` is called directly from C++,
 # so we have to explicitly put the model in the scope of this file.
 # TODO: fix this
 model: torch.nn.Module = load_lightning_model()
-n_species = model.state_dict()["model.formation_enthalpies"].shape[0]
-time_step = model.state_dict()["model.time_step"]
+# Why model has no attribute time_step?
+n_species: int = model.state_dict()["model.formation_enthalpies"].shape[0]
+time_step: float = model.state_dict()["model.time_step"]
 
 
 # @torch.compile()
-def inference(input):
-    # TODO: check the input type: is it a Tensor or numpy array?
-    # input shape: batch * [T, P, Y_ns, rho]
-    input = input.to(model.device)
-    # input = input[input[:, 0] >= settings["frozenTemperature"]] # FIXME: for debug only
+def inference(input_array: np.ndarray):
+    # input shape: batch * [T, P, Y_ns, rho] (flattened to 1D)
+    input = torch.Tensor(input_array).reshape(-1, 1 + 1 + n_species + 1)  # .abs()
+    mask = input[:, 0] >= settings["frozenTemperature"]
+    input_selected = input[mask]
 
-    T, P, Y_in, rho = torch.split(input, [1, 1, n_species, 1], dim=1)
+    T, P, Y_in, rho = torch.split(input_selected, [1, 1, n_species, 1], dim=1)
 
     with torch.no_grad():
         Y_t = model.forward(T, P, Y_in)
     Y = inv_boxcox(Y_t)
-    # Why model has no attribute time_step?
     # return the mass change rate
-    return (Y - Y_in) * (rho / time_step)
+    Y_out = torch.zeros([input.shape[0], n_species])
+    Y_out[mask] = (Y - Y_in) * (rho / time_step)
+    # print(Y_out[-1])
+    # exit(1)
+    return Y_out
