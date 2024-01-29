@@ -44,7 +44,7 @@ class DFNN(Trainer): # It is possible to use nn.Module as the base class
 
         # # The old ways
         # layers = [2 + n_species, 400, 200, 100, 1]
-        # self.model = nn.Modulelist([MLP(layers) for _ in range(n_species)])
+        # self.model = nn.ModuleList([MLP(layers) for _ in range(n_species)])
         # self.model.forward = lambda x: torch.stack([m(x) for m in self.model], dim=2).squeeze()
 
         print(self.model)
@@ -53,9 +53,9 @@ class DFNN(Trainer): # It is possible to use nn.Module as the base class
 
     # @torch.compile()
     def forward(self, T_in, P_in, Y_in):
-        P_in /= 101325.
+        P_in -= 101325.
         # T_in -= self.model.T # TODO: normalize T
-        Y_in_t = boxcox(Y_in)
+        Y_in_t = boxcox(Y_in, self.model.lmbda)
         Y_in_norm = normalize(
             Y_in_t,
             self.model.Y_in_t_mean,

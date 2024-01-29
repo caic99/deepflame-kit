@@ -64,10 +64,10 @@ class Trainer(L.LightningModule):
         Y_pred_t = self.forward(T_in, P_in, Y_in)
         criterion = nn.L1Loss()
 
-        Y_gt_t = boxcox(Y_gt)
+        Y_gt_t = boxcox(Y_gt, self.model.lmbda)
         loss1 = criterion(Y_pred_t, Y_gt_t)
-
-        Y_pred = inv_boxcox(Y_pred_t)
+        Y_pred = inv_boxcox(Y_pred_t, self.model.lmbda)
+        # loss0 = nn.MSELoss()(Y_pred, Y_gt) * 1e5
         Y_pred_sum = Y_pred.sum(axis=1)
         loss2 = criterion(
             Y_pred_sum,
@@ -96,7 +96,7 @@ class Trainer(L.LightningModule):
         # TODO: change weights
         # TODO: add more losses
 
-        # print(f"{loss=:.4e}, {loss1=:.4e}, {loss2=:.4e}, {loss3=:.4e}, {loss4=:.4e}")
+        # print(f"{loss=:.4e}, {loss1=:.4e}, {loss2=:.4e}, {loss3=:.4e}, {loss4=:.4e}; {loss0=:.4e}")
         self.log(
             "train_loss",
             loss,

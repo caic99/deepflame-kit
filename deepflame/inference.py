@@ -62,7 +62,7 @@ def parse_properties(config_path) -> dict:
 
 def load_lightning_model(
     model_config_path="/root/deepflame-kit/examples/hy41/config.yaml",
-    checkpoint_path="/root/deepflame-kit/examples/hy41/dfnn/bbfus18q/checkpoints/epoch=2-step=207.ckpt",
+    checkpoint_path="/root/deepflame-kit/examples/hy41/dfnn/dvzghazw/checkpoints/epoch=9-step=690.ckpt",
 ) -> torch.nn.Module:
     from lightning.pytorch.cli import LightningCLI
     from deepflame.data import DFDataModule
@@ -78,7 +78,7 @@ def load_lightning_model(
     if model_config_path is None:
         model_config_path = settings["torchModel"]
 
-    cli_args = f"predict --config {model_config_path} --trainer.limit_predict_batches=0".split()
+    cli_args = f"predict --config {model_config_path} --ckpt_path {checkpoint_path} --trainer.limit_predict_batches=0".split()
     # Generate model from config file
     cli = LightningCLI(
         DFNN,
@@ -94,7 +94,7 @@ def load_lightning_model(
 
 
 property_config_path = (
-    "~/DeepFlame-examples/1Dflame/Tu800K-Phi1.0/constant/CanteraTorchProperties"
+    "/root/DeepFlame-examples/1Dflame/Tu800K-Phi1.0/constant/CanteraTorchProperties"
 )
 
 property_config = parse_properties(property_config_path)
@@ -108,6 +108,7 @@ model: torch.nn.Module = load_lightning_model()
 # Why model has no attribute time_step?
 n_species: int = model.state_dict()["model.formation_enthalpies"].shape[0]
 time_step: float = model.state_dict()["model.time_step"]
+lmbda: float = model.state_dict()["model.lmbda"]
 
 
 # @torch.compile()
@@ -121,7 +122,7 @@ def inference(input_array: np.ndarray):
 
     with torch.no_grad():
         Y_t = model.forward(T, P, Y_in)
-    Y = inv_boxcox(Y_t)
+    Y = inv_boxcox(Y_t, lmbda)
     # return the mass change rate
     Y_out = torch.zeros([input.shape[0], n_species])
     Y_out[mask] = (Y - Y_in) * (rho / time_step)

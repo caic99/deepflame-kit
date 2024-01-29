@@ -164,3 +164,4 @@ cython_debug/
 # Training log
 dfnn/
 lightning_logs/
+wandb/
