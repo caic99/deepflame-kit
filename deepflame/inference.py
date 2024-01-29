@@ -78,7 +78,7 @@ def load_lightning_model(
     if model_config_path is None:
         model_config_path = settings["torchModel"]
 
-    cli_args = f"predict --config {model_config_path} --ckpt_path {checkpoint_path} --trainer.limit_predict_batches=0".split()
+    cli_args = f"predict --config {model_config_path} --ckpt_path {checkpoint_path} --trainer.limit_predict_batches=0 --trainer.logger=False".split()
     # Generate model from config file
     cli = LightningCLI(
         DFNN,
