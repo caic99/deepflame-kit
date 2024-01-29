@@ -1,3 +1,12 @@
+"""
+The inference API for DeepFlame.
+Usage:
+    from deepflame.inference import inference
+    input = torch.stack(T, P, Y_ns, rho, axis=1)
+    output = inference(input)
+"""
+
+
 import torch
 import yaml
 from deepflame.utils import inv_boxcox
