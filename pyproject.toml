@@ -29,3 +29,6 @@ Issues = "https://github.com/caic99/deepflame-kit/issues"
 
 [project.scripts]
 deepflame = "deepflame.main:cli_main"
+
+[tool.setuptools]
+packages = ["deepflame"]
