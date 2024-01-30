@@ -104,11 +104,10 @@ settings = property_config["TorchSettings"]
 # Currently `inference()` is called directly from C++,
 # so we have to explicitly put the model in the scope of this file.
 # TODO: fix this
-model: torch.nn.Module = load_lightning_model()
-# Why model has no attribute time_step?
-n_species: int = model.state_dict()["model.formation_enthalpies"].shape[0]
-time_step: float = model.state_dict()["model.time_step"]
-lmbda: float = model.state_dict()["model.lmbda"]
+module: torch.nn.Module = load_lightning_model()
+n_species: int = module.model.formation_enthalpies.shape[0]
+time_step: float = module.model.time_step
+lmbda: float = module.model.lmbda
 
 
 # @torch.compile()
@@ -121,7 +120,7 @@ def inference(input_array: np.ndarray):
     T, P, Y_in, rho = torch.split(input_selected, [1, 1, n_species, 1], dim=1)
 
     with torch.no_grad():
-        Y_t = model.forward(T, P, Y_in)
+        Y_t = module.forward(T, P, Y_in)
     Y = inv_boxcox(Y_t, lmbda)
     # return the mass change rate
     Y_out = torch.zeros([input.shape[0], n_species])
