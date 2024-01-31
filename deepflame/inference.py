@@ -118,13 +118,10 @@ def inference(input_array: np.ndarray):
     input_selected = input[mask]
 
     T, P, Y_in, rho = torch.split(input_selected, [1, 1, n_species, 1], dim=1)
-
     with torch.no_grad():
-        Y_t = module.forward(T, P, Y_in)
-    Y = inv_boxcox(Y_t, lmbda)
+        Y_delta = module.predict(T, P, Y_in)
     # return the mass change rate
+    rate = (Y_delta) * (rho / time_step)
     Y_out = torch.zeros([input.shape[0], n_species])
-    Y_out[mask] = (Y - Y_in) * (rho / time_step)
-    # print(Y_out[-1])
-    # exit(1)
+    Y_out = rate
     return Y_out

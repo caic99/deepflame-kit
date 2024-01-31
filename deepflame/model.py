@@ -41,36 +41,42 @@ class DFNN(Trainer):  # It is possible to use nn.Module as the base class
         dec.forward = lambda x: torch.stack([m(x) for m in dec], dim=2).squeeze()
         self.model = nn.Sequential(
             enc, dec
-        )  # Forward: cat(T,P,Y_norm) of shape [batch, 2+ns] -> Y_delta[batch, ns]
+        )  # Forward: cat(T,P,Y_n) of shape [batch, 2+ns] -> Y_dt_n[batch, ns]
 
         # # The old ways
         # layers = [2 + n_species, 400, 200, 100, 1]
         # self.model = nn.ModuleList([MLP(layers) for _ in range(n_species)])
-        # self.model.forward = lambda x: torch.stack([m(x) for m in self.model], dim=2).squeeze()
+        # self.model.forward = lambda x: torch.stack(
+        #     [m(x) for m in self.model], dim=2
+        # ).squeeze()
 
         print(self.model)
-        # torch.compile(self.model) # TODO: add config on torch.compile
+        # model = torch.compile(self.model) # TODO: add config on torch.compile
         self.save_hyperparameters()  # available if using LightningModule as base class
 
     # @torch.compile()
-    def forward(self, T_in, P_in, Y_in):
-        P_in_norm = P_in - 101325.0
+    def forward(self, T_in, P_in, Y_t_in):
+        P_norm_in = P_in - 101325.0
         # T_in -= self.model.T # TODO: normalize T
-        Y_in_t = boxcox(Y_in, self.model.lmbda)
-        Y_in_norm = normalize(
-            Y_in_t,
-            self.model.Y_in_t_mean,
-            self.model.Y_in_t_std,
+        Y_n_in = normalize(
+            Y_t_in,
+            self.model.Y_t_in_mean,
+            self.model.Y_t_in_std,
         )
-        Y_pred_t_delta_norm = self.model(torch.cat([T_in, P_in_norm, Y_in_norm], dim=1))
+        Y_dt_n_pred = self.model(torch.cat([T_in, P_norm_in, Y_n_in], dim=1))
+        Y_dt_pred = denormalize(
+            Y_dt_n_pred,
+            self.model.Y_dt_mean,
+            self.model.Y_dt_std,
+        )
+        Y_t_pred = Y_t_in + Y_dt_pred
+        Y_pred = inv_boxcox(Y_t_pred, self.model.lmbda)
+        # Y_pred[Y_pred < 0] = 0
+        return Y_pred, Y_dt_pred
 
-        Y_pred_t_delta = denormalize(
-            Y_pred_t_delta_norm,
-            self.model.Y_t_delta_mean,
-            self.model.Y_t_delta_std,
-        )
-        Y_pred_t = Y_in_t + Y_pred_t_delta
-        return Y_pred_t
-        Y_pred = inv_boxcox(Y_pred_t)
-        Y_pred[Y_pred < 0] = 0
-        return Y_pred
+    def predict(self, T_in, P_in, Y_in):
+        """Interface for Infer"""
+        # Don't forget to set torch.no_grad() before calling this function
+        Y_t_in = boxcox(Y_in, self.model.lmbda)
+        Y_pred, Y_dt_n_pred = self.forward(T_in, P_in, Y_t_in)
+        return Y_pred - Y_in

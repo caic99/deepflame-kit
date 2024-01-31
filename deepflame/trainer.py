@@ -26,12 +26,10 @@ class Trainer(L.LightningModule):
         self.dataset = self.trainer.datamodule.dataset  # type: ignore
         for i in [
             "formation_enthalpies",
-            "Y_in_t_mean",
-            "Y_in_t_std",
-            "Y_gt_t_mean",
-            "Y_gt_t_std",
-            "Y_t_delta_mean",
-            "Y_t_delta_std",
+            "Y_t_in_mean",
+            "Y_t_in_std",
+            "Y_dt_mean",
+            "Y_dt_std",
             "T",
             "P",
             "time_step",
@@ -45,9 +43,6 @@ class Trainer(L.LightningModule):
                     device=self.device,
                 ),
             )
-        # self.model = torch.compile(self.model)
-
-        # TODO: test pipeline
 
     def training_step(self, batch, batch_idx):
         (
@@ -55,23 +50,28 @@ class Trainer(L.LightningModule):
             P_in,
             Y_in,
             H_in,
-            T_gt,
-            P_gt,
-            Y_gt,
-            H_gt,
+            T_label,
+            P_label,
+            Y_label,
+            H_label,
         ) = batch
 
-        Y_pred_t = self.forward(T_in, P_in, Y_in)
-        criterion = nn.L1Loss()
+        Y_t_in = boxcox(Y_in, self.model.lmbda)
+        Y_t_label = boxcox(Y_label, self.model.lmbda)
+        Y_dt_label = Y_t_label - Y_t_in
+        Y_dt_n_label = normalize(
+            Y_dt_label,
+            self.model.Y_dt_mean,
+            self.model.Y_dt_std,
+        )
+        Y_pred, Y_dt_pred = self.forward(T_in, P_in, Y_t_in)
 
-        Y_gt_t = boxcox(Y_gt, self.model.lmbda)
-        loss1 = criterion(Y_pred_t, Y_gt_t)
-        Y_pred = inv_boxcox(Y_pred_t, self.model.lmbda)
-        # loss0 = nn.MSELoss()(Y_pred, Y_gt) * 1e5
+        criterion = nn.L1Loss()
+        loss1 = criterion(Y_dt_pred, Y_dt_label)
         Y_pred_sum = Y_pred.sum(axis=1)
         loss2 = criterion(
             Y_pred_sum,
-            #   Y_gt.sum(axis=1))
+            # Y_label.sum(axis=1),
             torch.ones_like(Y_pred_sum),
         )
 
@@ -80,23 +80,24 @@ class Trainer(L.LightningModule):
         )  # prevent overflow introduced by large H and small time_step
 
         loss3 = (
-            criterion((H_gt * Y_pred).sum(axis=1), (H_in * Y_in).sum(axis=1)) / scale
+            criterion((H_label * Y_pred).sum(axis=1), (H_in * Y_in).sum(axis=1)) / scale
         )
 
         fe = self.model.formation_enthalpies
         loss4 = (
             criterion(
                 (fe * Y_pred).sum(axis=1),
-                (fe * Y_gt).sum(axis=1),
+                (fe * Y_label).sum(axis=1),
             )
             / scale
         )
         # Target: 3e-3, 1e-6, 1e+8, 1e+8
+        # TODO: verify if other loss actually contributes
         loss = loss1 + loss2 + loss3 + loss4
         # TODO: change weights
         # TODO: add more losses
 
-        # print(f"{loss=:.4e}, {loss1=:.4e}, {loss2=:.4e}, {loss3=:.4e}, {loss4=:.4e}; {loss0=:.4e}")
+        # print(f"{loss=:.4e}, {loss1=:.4e}, {loss2=:.4e}, {loss3=:.4e}, {loss4=:.4e} ")
         self.log(
             "train_loss",
             loss,

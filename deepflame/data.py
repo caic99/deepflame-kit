@@ -32,7 +32,7 @@ class DFDataSet(Dataset):
 
         # Load Dataset
         self.data: np.ndarray = np.load(data_path)
-        # DIMENSION: n * ((T, P, Y[ns], H[ns])_in, (T, P, Y[ns], H[ns])_gt)
+        # DIMENSION: n * ((T, P, Y[ns], H[ns])_in, (T, P, Y[ns], H[ns])_out)
         assert self.data.shape[1] == 2 * (
             2 + 2 * self.n_species
         ), "n_species in dataset does not match config file"
@@ -43,32 +43,27 @@ class DFDataSet(Dataset):
         ), "n_species in dataset does not match formation_enthalpies"
         # self.dims = (1, 2 * (2 + 2 * self.n_species))
 
-        # Apply normalization to Y_in and Y_gt
-        self.Y_in = self.data[:, 2 : 2 + self.n_species]
-        self.Y_gt = self.data[:, 4 + 2 * self.n_species : 4 + 3 * self.n_species]
+        # Apply normalization to Y_in and Y_out
+        Y_in = self.data[:, 2 : 2 + self.n_species]
+        Y_out = self.data[:, 4 + 2 * self.n_species : 4 + 3 * self.n_species]
         # The mass fraction calculated by cantera is not guaranteed to be positive.
         # This affects the boxcox transformation since it requires positive input.
-        self.Y_gt[self.Y_gt < 0] = 0  # Or box-cox transformation would fail
+        Y_out[Y_out < 0] = 0  # Or box-cox transformation would fail
 
-        # Notation: Y -- boxcox --> Y_t -- norm --> Y_norm, Y_t_mean, Y_t_std
+        # Notation: Y -- boxcox --> Y_t -- norm --> Y_n, Y_t_mean, Y_t_std
+        # Y_dt := (Y_t_out - Y_t_in) -- norm -> Y_dt_n, Y_dt_mean, Y_dt_std
         self.lmbda = lmbda
 
-        Y_in_t = boxcox(self.Y_in, lmbda)
-        self.Y_in_t_mean = Y_in_t.mean(axis=0)
-        self.Y_in_t_std = Y_in_t.std(axis=0, ddof=1)
-        Y_in_norm = normalize(
-            boxcox(self.Y_in, self.lmbda), self.Y_in_t_mean, self.Y_in_t_std
-        )
-        Y_gt_t = boxcox(self.Y_gt, lmbda)
-        self.Y_gt_t_mean = Y_gt_t.mean(axis=0)
-        self.Y_gt_t_std = Y_gt_t.std(axis=0, ddof=1)
-        Y_gt_norm = normalize(
-            boxcox(self.Y_gt, self.lmbda), self.Y_gt_t_mean, self.Y_gt_t_std
-        )
+        Y_t_in = boxcox(Y_in, lmbda)
+        self.Y_t_in_mean = Y_t_in.mean(axis=0)
+        self.Y_t_in_std = Y_t_in.std(axis=0, ddof=1)
 
-        Y_t_delta = Y_gt_t - Y_in_t
-        self.Y_t_delta_mean = Y_t_delta.mean(axis=0)
-        self.Y_t_delta_std = Y_t_delta.std(axis=0, ddof=1)
+        Y_t_out = boxcox(Y_out, lmbda)
+        Y_dt = Y_t_out - Y_t_in
+        self.Y_dt_mean = Y_dt.mean(axis=0)
+        self.Y_dt_std = Y_dt.std(axis=0, ddof=1)
+        # The statistics marked as self.* loads into model buffer on training `setup()`.
+
 
     def __len__(self):
         return self.data.shape[0]
@@ -81,10 +76,10 @@ class DFDataSet(Dataset):
                 1,  # P_in
                 self.n_species,  # Y_in[ns]
                 self.n_species,  # H_in[ns]
-                1,  # T_gt
-                1,  # P_gt
-                self.n_species,  # Y_gt[ns]
-                self.n_species,  # H_gt[ns]
+                1,  # T_out
+                1,  # P_out
+                self.n_species,  # Y_out[ns]
+                self.n_species,  # H_out[ns]
             ],
         )
 
@@ -92,9 +87,11 @@ class DFDataSet(Dataset):
 class DFDataModule(L.LightningDataModule):
     def __init__(
         self,
-        data_path=Path("dataset.npy"),
-        config_path=Path("HyChem41s.yaml"),
-        formation_enthalpies_path=Path("formation_enthalpies.npy"),
+        data_path=Path("/root/deepflame-kit/examples/hy41/dataset.npy"),
+        config_path=Path("/root/deepflame-kit/examples/hy41/HyChem41s.yaml"),
+        formation_enthalpies_path=Path(
+            "/root/deepflame-kit/examples/hy41/formation_enthalpies.npy"
+        ),
         lmbda=0.05,
         batch_size=32,
         num_workers=4,
