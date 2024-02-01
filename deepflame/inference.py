@@ -10,7 +10,6 @@ Usage:
 import numpy as np
 import torch
 import yaml
-from deepflame.utils import inv_boxcox
 
 
 def parse_properties(config_path) -> dict:
@@ -62,7 +61,7 @@ def parse_properties(config_path) -> dict:
 
 def load_lightning_model(
     model_config_path="/root/deepflame-kit/examples/hy41/config.yaml",
-    checkpoint_path="/root/deepflame-kit/examples/hy41/dfnn/dvzghazw/checkpoints/epoch=9-step=690.ckpt",
+    checkpoint_path="/root/deepflame-kit/examples/hy41/dfnn/wk1cz18x/checkpoints/epoch=39-step=10960.ckpt",
 ) -> torch.nn.Module:
     from lightning.pytorch.cli import LightningCLI
     from deepflame.data import DFDataModule
@@ -104,7 +103,7 @@ settings = property_config["TorchSettings"]
 # Currently `inference()` is called directly from C++,
 # so we have to explicitly put the model in the scope of this file.
 # TODO: fix this
-module: torch.nn.Module = load_lightning_model()
+module: torch.nn.Module = load_lightning_model().eval()
 n_species: int = module.model.formation_enthalpies.shape[0]
 time_step: float = module.model.time_step
 lmbda: float = module.model.lmbda

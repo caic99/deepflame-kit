@@ -102,11 +102,9 @@ class DFDataSet(Dataset):
 class DFDataModule(L.LightningDataModule):
     def __init__(
         self,
-        data_path=Path("/root/deepflame-kit/examples/hy41/dataset.npy"),
-        config_path=Path("/root/deepflame-kit/examples/hy41/HyChem41s.yaml"),
-        formation_enthalpies_path=Path(
-            "/root/deepflame-kit/examples/hy41/formation_enthalpies.npy"
-        ),
+        data_path=Path("dataset.npy"),
+        config_path=Path("HyChem41s.yaml"),
+        formation_enthalpies_path=Path("formation_enthalpies.npy"),
         lmbda=0.05,
         batch_size=32,
         num_workers=4,

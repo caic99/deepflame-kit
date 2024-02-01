@@ -22,7 +22,7 @@ class Trainer(L.LightningModule):
     #     return [optimizer], [lr_scheduler]
 
     def setup(self, stage):
-        # Transfer metadata to device
+        # Transfer stats to device
         self.dataset:DFDataSet = self.trainer.datamodule.dataset  # type: ignore
         for k, v in self.dataset.stats.items():
             self.model.register_buffer(
