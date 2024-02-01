@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-
+from typing import List
 from deepflame.trainer import Trainer
 from deepflame.utils import normalize, denormalize, boxcox, inv_boxcox
 
@@ -21,8 +21,8 @@ class DFNN(Trainer):  # It is possible to use nn.Module as the base class
     def __init__(
         self,
         n_species: int = 41,
-        enc_size: list[int] = [256, 512],
-        dec_size: list[int] = [512, 256],
+        enc_size: List[int] = [256, 512],
+        dec_size: List[int] = [512, 256],
     ):  # TODO: add inert gas index
         super().__init__()
         self.example_input_array = torch.zeros(1, 2 + n_species).split(
