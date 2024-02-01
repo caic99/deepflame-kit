@@ -42,6 +42,7 @@ rm -r 0.00*
 ./Allrun
 reconstructPar
 flameSpeed
+# Reference value: flamePoint.x = 0.01011, flameSpeed = 2.14 m/s
 ```
 
 ## Development
