@@ -9,6 +9,9 @@ from deepflame.utils import boxcox, inv_boxcox, normalize
 
 
 class DFDataSet(Dataset):
+    data:torch.Tensor
+    stats:dict[str, torch.Tensor]
+
     def __init__(
         self,
         data_path: Path,
@@ -22,8 +25,8 @@ class DFDataSet(Dataset):
         assert len(self.config["phases"]) == 1, "Only single phase is supported"
         phase = self.config["phases"][0]
         self.n_species = len(phase["species"])
-        self.T: float = phase["state"]["T"]
-        self.P: float = phase["state"]["P"]
+        # self.T: float = phase["state"]["T"]
+        # self.P: float = phase["state"]["P"]
 
         # Alternative: extract from cantera
         # import cantera as ct
@@ -31,57 +34,69 @@ class DFDataSet(Dataset):
         # self.n_species = gas.n_species
 
         # Load Dataset
-        self.data: np.ndarray = np.load(data_path)
+        self.data = torch.tensor(np.load(data_path))
         # DIMENSION: n * ((T, P, Y[ns], H[ns])_in, (T, P, Y[ns], H[ns])_out)
-        assert self.data.shape[1] == 2 * (
-            2 + 2 * self.n_species
-        ), "n_species in dataset does not match config file"
         self.time_step = 1e-7  # TODO: load from dataset
-        self.formation_enthalpies = np.load(formation_enthalpies_path)
+        self.formation_enthalpies = torch.tensor(np.load(formation_enthalpies_path))
         assert (
             self.formation_enthalpies.shape[0] == self.n_species
         ), "n_species in dataset does not match formation_enthalpies"
         # self.dims = (1, 2 * (2 + 2 * self.n_species))
-
-        # Apply normalization to Y_in and Y_out
-        Y_in = self.data[:, 2 : 2 + self.n_species]
-        Y_out = self.data[:, 4 + 2 * self.n_species : 4 + 3 * self.n_species]
+        assert (
+            self.data.shape[1] == 4 + 4 * self.n_species
+        ), "n_species in dataset does not match config file"
+        self.indices = (
+            1,  # T_in
+            1,  # P_in
+            self.n_species,  # Y_in[ns]
+            self.n_species,  # H_in[ns]
+            1,  # T_out
+            1,  # P_out
+            self.n_species,  # Y_label[ns]
+            self.n_species,  # H_out[ns]
+        )
+        (T_in, P_in, Y_in, H_in, T_label, P_label, Y_label, H_label) = self.data.split(
+            self.indices, dim=1
+        )
         # The mass fraction calculated by cantera is not guaranteed to be positive.
         # This affects the boxcox transformation since it requires positive input.
-        Y_out[Y_out < 0] = 0  # Or box-cox transformation would fail
+        Y_label[Y_label < 0] = 0
 
         # Notation: Y -- boxcox --> Y_t -- norm --> Y_n, Y_t_mean, Y_t_std
         # Y_dt := (Y_t_out - Y_t_in) -- norm -> Y_dt_n, Y_dt_mean, Y_dt_std
-        self.lmbda = lmbda
 
-        Y_t_in = boxcox(Y_in, lmbda)
-        self.Y_t_in_mean = Y_t_in.mean(axis=0)
-        self.Y_t_in_std = Y_t_in.std(axis=0, ddof=1)
+        # The statistics marked as self.stats.*:dict[str, np.ndarray] loads into model buffer on training `setup()`.
+        self.stats = {}
 
-        Y_t_out = boxcox(Y_out, lmbda)
-        Y_dt = Y_t_out - Y_t_in
-        self.Y_dt_mean = Y_dt.mean(axis=0)
-        self.Y_dt_std = Y_dt.std(axis=0, ddof=1)
-        # The statistics marked as self.* loads into model buffer on training `setup()`.
+        def set_stats(self, key: str, value=None):
+            if value is None:
+                value = getattr(self, key)
+            self.stats[key] = value
 
+        def set_norm_stats(self, key: str, value: torch.Tensor | None = None):
+            if value is None:
+                value = getattr(self, key)
+            assert value is not None
+            set_stats(self, f"{key}_mean", value.mean(dim=0))
+            set_stats(self, f"{key}_std", value.std(dim=0))
+
+        set_stats(self, "lmbda", lmbda)
+        set_stats(self, "formation_enthalpies")
+        set_stats(self, "time_step")
+        set_norm_stats(self, "T_in", T_in)
+        set_norm_stats(self, "P_in", P_in)
+        self.Y_t_in = boxcox(Y_in, lmbda)
+        set_norm_stats(self, "Y_t_in")
+        self.Y_t_out = boxcox(Y_label, lmbda)
+        self.Y_dt = self.Y_t_out - self.Y_t_in
+        set_norm_stats(self, "Y_dt")
 
     def __len__(self):
         return self.data.shape[0]
 
     def __getitem__(self, index: int):
-        frame = torch.tensor(self.data[index], dtype=torch.get_default_dtype())
-        return frame.split(
-            [
-                1,  # T_in
-                1,  # P_in
-                self.n_species,  # Y_in[ns]
-                self.n_species,  # H_in[ns]
-                1,  # T_out
-                1,  # P_out
-                self.n_species,  # Y_out[ns]
-                self.n_species,  # H_out[ns]
-            ],
-        )
+        frame = self.data[index].detach().clone().type(torch.get_default_dtype())
+        return frame.split(self.indices)
 
 
 class DFDataModule(L.LightningDataModule):

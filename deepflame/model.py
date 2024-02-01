@@ -56,8 +56,8 @@ class DFNN(Trainer):  # It is possible to use nn.Module as the base class
 
     # @torch.compile()
     def forward(self, T_in, P_in, Y_t_in):
-        P_norm_in = P_in - 101325.0
-        # T_in -= self.model.T # TODO: normalize T
+        P_norm_in = normalize(P_in, self.model.P_in_mean, self.model.P_in_std)
+        T_norm_in = normalize(T_in, self.model.T_in_mean, self.model.T_in_std)
         Y_n_in = normalize(
             Y_t_in,
             self.model.Y_t_in_mean,

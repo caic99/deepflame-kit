@@ -23,25 +23,10 @@ class Trainer(L.LightningModule):
 
     def setup(self, stage):
         # Transfer metadata to device
-        self.dataset = self.trainer.datamodule.dataset  # type: ignore
-        for i in [
-            "formation_enthalpies",
-            "Y_t_in_mean",
-            "Y_t_in_std",
-            "Y_dt_mean",
-            "Y_dt_std",
-            "T",
-            "P",
-            "time_step",
-            "lmbda",
-        ]:
+        self.dataset:DFDataSet = self.trainer.datamodule.dataset  # type: ignore
+        for k, v in self.dataset.stats.items():
             self.model.register_buffer(
-                i,
-                torch.tensor(
-                    getattr(self.dataset, i),
-                    dtype=torch.get_default_dtype(),
-                    device=self.device,
-                ),
+                k, v.detach().clone().type(torch.get_default_dtype()).to(self.device) if isinstance(v, torch.Tensor) else torch.tensor(v, device=self.device)
             )
 
     def training_step(self, batch, batch_idx):
@@ -55,7 +40,8 @@ class Trainer(L.LightningModule):
             Y_label,
             H_label,
         ) = batch
-
+        T_norm_in = normalize(T_in, self.model.T_in_mean, self.model.T_in_std)
+        P_norm_in = normalize(P_in, self.model.P_in_mean, self.model.P_in_std)
         Y_t_in = boxcox(Y_in, self.model.lmbda)
         Y_t_label = boxcox(Y_label, self.model.lmbda)
         Y_dt_label = Y_t_label - Y_t_in
@@ -64,7 +50,7 @@ class Trainer(L.LightningModule):
             self.model.Y_dt_mean,
             self.model.Y_dt_std,
         )
-        Y_pred, Y_dt_pred = self.forward(T_in, P_in, Y_t_in)
+        Y_pred, Y_dt_pred = self.forward(T_norm_in, P_norm_in, Y_t_in)
 
         criterion = nn.L1Loss()
         loss1 = criterion(Y_dt_pred, Y_dt_label)
