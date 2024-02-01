@@ -19,9 +19,29 @@ deepflame --help
 ### Training
 
 ```bash
-deepflame fit --config config.yaml \
-    --trainer.max_epochs 100 # Append args if needed
-deepflame fit --help
+# First configure setup in `config.yaml`
+cd deepflame-kit/examples/hy41
+deepflame fit --config config.yaml
+#    --trainer.max_epochs 100 # Append args if needed
+# deepflame fit --help
+```
+
+The checkpoint with the best validation loss will be saved as a `.ckpt` file.
+
+### Infer
+
+```bash
+# Dataset: https://nb.bohrium.dp.tech/competitions/detail/8918899584?tab=datasets
+cd DeepFlame-examples/1Dflame/Tu800K-Phi1.0
+cp ~/deepflame-kit/deepflame/inference.py .
+# Edit model checkpoint path in `inference.py`
+source /opt/OpenFOAM-7/etc/bashrc
+source ~/deepflame-dev/bashrc
+rm -r 0.00*
+./Allclean
+./Allrun
+reconstructPar
+flameSpeed
 ```
 
 ## Development
