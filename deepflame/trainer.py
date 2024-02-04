@@ -48,10 +48,10 @@ class Trainer(L.LightningModule):
             self.model.Y_dt_mean,
             self.model.Y_dt_std,
         )
-        Y_pred, Y_dt_pred = self.forward(T_in, P_in, Y_t_in)
+        Y_pred, Y_dt_n_pred = self.forward(T_in, P_in, Y_t_in)
 
         criterion = nn.L1Loss()
-        loss1 = criterion(Y_dt_pred, Y_dt_label)
+        loss1 = criterion(Y_dt_n_pred, Y_dt_n_label)
         Y_pred_sum = Y_pred.sum(axis=1)
         loss2 = criterion(
             Y_pred_sum,
