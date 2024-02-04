@@ -72,7 +72,7 @@ class DFNN(Trainer):  # It is possible to use nn.Module as the base class
         Y_t_pred = Y_t_in + Y_dt_pred
         Y_pred = inv_boxcox(Y_t_pred, self.model.lmbda)
         # Y_pred[Y_pred < 0] = 0
-        return Y_pred, Y_dt_pred
+        return Y_pred, Y_dt_n_pred
 
     def predict(self, T_in, P_in, Y_in):
         """Interface for Infer"""
