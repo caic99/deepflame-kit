@@ -5,9 +5,10 @@ DeepFlame-kit is a deep learning package for reacting flow.
 ### Install
 
 ```bash
+# First activate your deepflame environment
 git clone https://github.com/caic99/deepflame-kit.git
 cd deepflame-kit
-pip install . -e # Will also install requirements
+pip install -e . # Will also install requirements
 deepflame --help
 ```
 
