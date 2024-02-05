@@ -4,13 +4,14 @@ import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 import lightning as L
 import yaml
+from typing import Dict
 
 from deepflame.utils import boxcox, inv_boxcox, normalize
 
 
 class DFDataSet(Dataset):
     data:torch.Tensor
-    stats:dict[str, torch.Tensor]
+    stats:Dict[str, torch.Tensor]
 
     def __init__(
         self,
@@ -73,7 +74,7 @@ class DFDataSet(Dataset):
                 value = getattr(self, key)
             self.stats[key] = value
 
-        def set_norm_stats(self, key: str, value: torch.Tensor | None = None):
+        def set_norm_stats(self, key: str, value=None):
             if value is None:
                 value = getattr(self, key)
             assert value is not None
