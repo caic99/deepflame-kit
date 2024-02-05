@@ -8,6 +8,8 @@ version = "0.0.1"
 dependencies = [
   "lightning",
   "torch",
+  "jsonargparse[all]",
+  "wandb",
 ]
 
 authors = [
