@@ -103,9 +103,9 @@ settings = property_config["TorchSettings"]
 # Currently `inference()` is called directly from C++,
 # so we have to explicitly put the model in the scope of this file.
 # TODO: fix this
-module: torch.nn.Module = load_lightning_model().eval()
+module: torch.nn.Module = load_lightning_model().eval() # TODO: load model checkpoint from config
 n_species: int = module.model.formation_enthalpies.shape[0]
-time_step: float = module.model.time_step
+time_step: float = settings["inferenceDeltaTime"]
 lmbda: float = module.model.lmbda
 
 
