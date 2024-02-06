@@ -18,7 +18,7 @@ deepflame --help
 # First configure setup in `config.yaml`
 cd deepflame-kit/examples/hy41
 deepflame fit --config config.yaml
-#    --trainer.max_epochs 100 # Append args if needed
+#    --trainer.max_epochs 100 --model.dec_size=[512,128] # Append args if needed
 # deepflame fit --help
 ```
 
