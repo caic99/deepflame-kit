@@ -6,9 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "deepflame-kit"
 version = "0.0.1"
 dependencies = [
-  "lightning",
-  "torch",
-  "jsonargparse[all]",
+  "lightning[pytorch-extra]",
   "wandb",
 ]
 
