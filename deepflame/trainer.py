@@ -39,6 +39,7 @@ class Trainer(L.LightningModule):
             P_label,
             Y_label,
             H_label,
+            time_step,
         ) = batch
         Y_t_in = boxcox(Y_in, self.model.lmbda)
         Y_t_label = boxcox(Y_label, self.model.lmbda)
@@ -60,7 +61,7 @@ class Trainer(L.LightningModule):
         )
 
         scale = (
-            self.model.time_step * 1e13
+            time_step * 1e13
         )  # prevent overflow introduced by large H and small time_step
 
         loss3 = (

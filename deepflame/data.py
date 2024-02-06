@@ -36,15 +36,14 @@ class DFDataSet(Dataset):
 
         # Load Dataset
         self.data = torch.tensor(np.load(data_path))
-        # DIMENSION: n * ((T, P, Y[ns], H[ns])_in, (T, P, Y[ns], H[ns])_out)
-        self.time_step = 1e-7  # TODO: load from dataset
+        # DIMENSION: n * ((T, P, Y[ns], H[ns])_in, (T, P, Y[ns], H[ns])_out, time_step)
         self.formation_enthalpies = torch.tensor(np.load(formation_enthalpies_path))
         assert (
             self.formation_enthalpies.shape[0] == self.n_species
         ), "n_species in dataset does not match formation_enthalpies"
-        # self.dims = (1, 2 * (2 + 2 * self.n_species))
+        # self.dims = (1, 2 * (2 + 2 * self.n_species) + 1)
         assert (
-            self.data.shape[1] == 4 + 4 * self.n_species
+            self.data.shape[1] == 4 + 4 * self.n_species + 1
         ), "n_species in dataset does not match config file"
         self.indices = (
             1,  # T_in
@@ -55,8 +54,9 @@ class DFDataSet(Dataset):
             1,  # P_out
             self.n_species,  # Y_label[ns]
             self.n_species,  # H_out[ns]
+            1,  # dt
         )
-        (T_in, P_in, Y_in, H_in, T_label, P_label, Y_label, H_label) = self.data.split(
+        (T_in, P_in, Y_in, H_in, T_label, P_label, Y_label, H_label, time_step) = self.data.split(
             self.indices, dim=1
         )
         # The mass fraction calculated by cantera is not guaranteed to be positive.
@@ -83,7 +83,6 @@ class DFDataSet(Dataset):
 
         set_stats(self, "lmbda", lmbda)
         set_stats(self, "formation_enthalpies")
-        set_stats(self, "time_step")
         set_norm_stats(self, "T_in", T_in)
         set_norm_stats(self, "P_in", P_in)
         self.Y_t_in = boxcox(Y_in, lmbda)
