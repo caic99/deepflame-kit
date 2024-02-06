@@ -7,10 +7,6 @@ from deepflame.utils import normalize, denormalize, boxcox, inv_boxcox
 
 
 class Trainer(L.LightningModule):
-    dataset: DFDataSet
-    model: torch.nn.Module
-    trainer: L.Trainer
-
     def __init__(self):
         super().__init__()
 

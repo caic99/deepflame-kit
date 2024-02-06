@@ -10,9 +10,6 @@ from deepflame.utils import boxcox, inv_boxcox, normalize
 
 
 class DFDataSet(Dataset):
-    data:torch.Tensor
-    stats:Dict[str, torch.Tensor]
-
     def __init__(
         self,
         data_path: Path,
@@ -37,10 +34,10 @@ class DFDataSet(Dataset):
         # Load Dataset
         self.data = torch.tensor(np.load(data_path))
         # DIMENSION: n * ((T, P, Y[ns], H[ns])_in, (T, P, Y[ns], H[ns])_out)
-        self.time_step = 1e-7  # TODO: load from dataset
-        self.formation_enthalpies = torch.tensor(np.load(formation_enthalpies_path))
+        time_step = 1e-7  # TODO: load from dataset
+        formation_enthalpies = torch.tensor(np.load(formation_enthalpies_path))
         assert (
-            self.formation_enthalpies.shape[0] == self.n_species
+            formation_enthalpies.shape[0] == self.n_species
         ), "n_species in dataset does not match formation_enthalpies"
         # self.dims = (1, 2 * (2 + 2 * self.n_species))
         assert (
@@ -67,30 +64,31 @@ class DFDataSet(Dataset):
         # Y_dt := (Y_t_out - Y_t_in) -- norm -> Y_dt_n, Y_dt_mean, Y_dt_std
 
         # The statistics marked as self.stats.*:dict[str, np.ndarray] loads into model buffer on training `setup()`.
-        self.stats = {}
+        self.stats: Dict[str, torch.Tensor | int | float] = {}
 
-        def set_stats(self, key: str, value=None):
-            if value is None:
-                value = getattr(self, key)
+        def set_stats(
+            self: DFDataSet,
+            key: str,
+            value: torch.Tensor | int | float,
+        ):
             self.stats[key] = value
 
-        def set_norm_stats(self, key: str, value=None):
-            if value is None:
-                value = getattr(self, key)
-            assert value is not None
+        def set_norm_stats(
+            self: DFDataSet, key: str, value: torch.Tensor
+        ):
             set_stats(self, f"{key}_mean", value.mean(dim=0))
             set_stats(self, f"{key}_std", value.std(dim=0))
 
         set_stats(self, "lmbda", lmbda)
-        set_stats(self, "formation_enthalpies")
-        set_stats(self, "time_step")
+        set_stats(self, "formation_enthalpies", formation_enthalpies)
+        set_stats(self, "time_step", time_step)
         set_norm_stats(self, "T_in", T_in)
         set_norm_stats(self, "P_in", P_in)
-        self.Y_t_in = boxcox(Y_in, lmbda)
-        set_norm_stats(self, "Y_t_in")
-        self.Y_t_out = boxcox(Y_label, lmbda)
-        self.Y_dt = self.Y_t_out - self.Y_t_in
-        set_norm_stats(self, "Y_dt")
+        Y_t_in = boxcox(Y_in, lmbda)
+        set_norm_stats(self, "Y_t_in", Y_t_in)
+        Y_t_out = boxcox(Y_label, lmbda)
+        Y_dt = Y_t_out - Y_t_in
+        set_norm_stats(self, "Y_dt", Y_dt)
 
     def __len__(self):
         return self.data.shape[0]
