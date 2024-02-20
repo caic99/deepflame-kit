@@ -6,7 +6,7 @@ from deepflame.data import DFDataSet
 from deepflame.utils import normalize, denormalize, boxcox, inv_boxcox
 
 
-class Trainer(L.LightningModule):
+class DFTrainer(L.LightningModule):
     def __init__(self):
         super().__init__()
 

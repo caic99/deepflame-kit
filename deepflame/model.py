@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from typing import List
-from deepflame.trainer import Trainer
+from deepflame.trainer import DFTrainer
 from deepflame.utils import normalize, denormalize, boxcox, inv_boxcox
 
 
@@ -17,7 +17,7 @@ class MLP(nn.Sequential):
         super().__init__(*layers)
 
 
-class DFNN(Trainer):  # It is possible to use nn.Module as the base class
+class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
     def __init__(
         self,
         n_species: int = 41,
