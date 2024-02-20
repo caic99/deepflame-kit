@@ -2,17 +2,14 @@
 seed_everything: 42 # Magic number
 model:
   n_species: 41 # Should match with dataset
-  enc_size:
-    - 256
-    # - 512
-  dec_size:
+  layer_sizes:
     - 512
     - 256
     - 128
 ckpt_path: null
 
 data:
-  batch_size: 4096
+  batch_size: 1024
   num_workers: 6
   lmbda: 0.1 # For lambda of box-cox transformation
 
@@ -24,16 +21,17 @@ data:
 optimizer:
   class_path: AdamW
   init_args:
-    lr: 5e-6
+    lr: 1e-3
 lr_scheduler:
   # https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.ReduceLROnPlateau.html
+  # After `cooldown` epochs, if `monitor` does not improve `threashold`*100% in last `patience` epochs, then `lr` will *=  `factor`.
   class_path: ReduceLROnPlateau
   init_args:
     monitor: val_loss # train_loss, val_loss
     mode: min
     factor: 0.5
-    patience: 2
-    min_lr: 1e-7
+    patience: 10
+    min_lr: 1e-5
     verbose: true
   # class_path: StepLR
   # init_args:
@@ -51,7 +49,7 @@ trainer:
   gradient_clip_val: null
   gradient_clip_algorithm: null
   check_val_every_n_epoch: 1
-  max_epochs: 400
+  max_epochs: 500
   max_steps: -1
   max_time: null
   detect_anomaly: false # Debug
@@ -59,7 +57,7 @@ trainer:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
       project: dfnn
-      mode: disabled # Debug
+      # mode: disabled # Debug
   log_every_n_steps: null
   val_check_interval: null
 
@@ -72,8 +70,8 @@ trainer:
       init_args:
         monitor: train_loss
         mode: min
-        patience: 5
-        verbose: true
+        patience: 100
+        verbose: false
     - class_path: ModelCheckpoint
       init_args:
         monitor: val_loss

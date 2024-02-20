@@ -21,34 +21,17 @@ class DFNN(Trainer):  # It is possible to use nn.Module as the base class
     def __init__(
         self,
         n_species: int = 41,
-        enc_size: List[int] = [256, 512],
-        dec_size: List[int] = [512, 256],
+        layer_sizes: List[int] = [512, 256, 128],
     ):  # TODO: add inert gas index
         super().__init__()
         self.example_input_array = torch.zeros(1, 2 + n_species).split(
             [1, 1, n_species], dim=1
         )
-
-        enc = MLP(
-            [
-                2 + n_species,
-                *enc_size,
-            ]
-        )
-        dec = nn.ModuleList(
-            [MLP([enc_size[-1], *dec_size, 1]) for _ in range(n_species)]
-        )
-        dec.forward = lambda x: torch.stack([m(x) for m in dec], dim=2).squeeze()
-        self.model = nn.Sequential(
-            enc, dec
-        )  # Forward: cat(T,P,Y_n) of shape [batch, 2+ns] -> Y_dt_n[batch, ns]
-
-        # # The old ways
-        # layers = [2 + n_species, 400, 200, 100, 1]
-        # self.model = nn.ModuleList([MLP(layers) for _ in range(n_species)])
-        # self.model.forward = lambda x: torch.stack(
-        #     [m(x) for m in self.model], dim=2
-        # ).squeeze()
+        layers = [2 + n_species, *layer_sizes, 1]
+        self.model = nn.ModuleList([MLP(layers) for _ in range(n_species)])
+        self.model.forward = lambda x: torch.stack(
+            [m(x) for m in self.model], dim=2
+        ).squeeze()
 
         print(self.model)
         # model = torch.compile(self.model) # TODO: add config on torch.compile
