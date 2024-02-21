@@ -27,10 +27,10 @@ lr_scheduler:
   # After `cooldown` epochs, if `monitor` does not improve `threashold`*100% in last `patience` epochs, then `lr` will *=  `factor`.
   class_path: ReduceLROnPlateau
   init_args:
-    monitor: val_loss # train_loss, val_loss
+    monitor: val_loss # train_loss # val_loss requires check_val_every_n_epoch: 1
     mode: min
     factor: 0.5
-    patience: 10
+    patience: 5
     min_lr: 1e-5
     verbose: true
   # class_path: StepLR
