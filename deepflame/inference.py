@@ -60,8 +60,8 @@ def parse_properties(config_path) -> dict:
 
 
 def load_lightning_model(
-    model_config_path="/root/deepflame-kit/examples/hy41/config.yaml",
-    checkpoint_path="/root/deepflame-kit/examples/hy41/dfnn/wk1cz18x/checkpoints/epoch=39-step=10960.ckpt",
+    model_config_path,
+    checkpoint_path,
 ) -> torch.nn.Module:
     from lightning.pytorch.cli import LightningCLI
     from deepflame.data import DFDataModule
@@ -92,6 +92,30 @@ def load_lightning_model(
     return cli.model
 
 
+def load_torch_model(
+    model_config_path,
+    checkpoint_path,
+) -> torch.nn.Module:
+    from deepflame.model import DFNN
+    config = yaml.load(open(model_config_path, "r"), Loader=yaml.FullLoader)
+    module = DFNN(**config["model"])
+    state_dict = torch.load(checkpoint_path)["state_dict"]
+    missing_keys, unexpected_keys = module.load_state_dict(state_dict, strict=False)
+    assert len(missing_keys) == 0, f"{missing_keys=}"
+    for k in unexpected_keys:
+        v = state_dict[k]
+        module.model.register_buffer(
+            k.removeprefix("model."),
+            (
+                v.detach().clone().type(torch.get_default_dtype())
+                if isinstance(v, torch.Tensor)
+                else torch.tensor(v)
+            ),
+        )
+    module.load_state_dict(state_dict, strict=True)
+    return module
+
+
 property_config_path = (
     "/root/DeepFlame-examples/1Dflame/Tu800K-Phi1.0/constant/CanteraTorchProperties"
 )
@@ -102,25 +126,33 @@ settings = property_config["TorchSettings"]
 # Inference API: https://github.com/deepmodeling/deepflame-dev/blob/master/src/dfChemistryModel/pytorchFunctions.H
 # Currently `inference()` is called directly from C++,
 # so we have to explicitly put the model in the scope of this file.
-# TODO: fix this
-module: torch.nn.Module = load_lightning_model().eval()
+
+model_config_path="/root/deepflame-kit/examples/hy41/config.yaml"
+checkpoint_path="/root/deepflame-kit/examples/hy41/dfnn/hnhigfo0/checkpoints/epoch=498-step=136726.ckpt"
+# TODO: extract from config file
+
+default_device = "cuda:0"
+# torch.set_default_device(default_device)
+load_model=load_torch_model
+# load_model = load_lightning_model
+module: torch.nn.Module = load_model(model_config_path, checkpoint_path)
+module = module.to(default_device).eval()
 n_species: int = module.model.formation_enthalpies.shape[0]
 time_step: float = module.model.time_step
 lmbda: float = module.model.lmbda
 
 
 # @torch.compile()
-def inference(input_array: np.ndarray):
+def inference(input_array: np.ndarray) -> np.ndarray:
     # input shape: batch * [T, P, Y_ns, rho] (flattened to 1D)
-    input = torch.Tensor(input_array).reshape(-1, 1 + 1 + n_species + 1)  # .abs()
+    input = torch.Tensor(input_array).to(default_device).reshape(-1, 1 + 1 + n_species + 1)  # .abs()
     mask = input[:, 0] >= settings["frozenTemperature"]
     input_selected = input[mask]
-
     T, P, Y_in, rho = torch.split(input_selected, [1, 1, n_species, 1], dim=1)
     with torch.no_grad():
         Y_delta = module.predict(T, P, Y_in)
     # return the mass change rate
     rate = (Y_delta) * (rho / time_step)
-    Y_out = torch.zeros([input.shape[0], n_species])
-    Y_out = rate
-    return Y_out
+    Y_out = torch.zeros([input.shape[0], n_species]).to(default_device)
+    Y_out[mask] = rate
+    return Y_out.cpu().numpy()
