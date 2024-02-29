@@ -18,13 +18,19 @@ class DFTrainer(L.LightningModule):
     #     return [optimizer], [lr_scheduler]
 
     def setup(self, stage):
-        # TODO: make sure existed stats are not overloaded
         # Transfer stats to device
-        self.dataset:DFDataSet = self.trainer.datamodule.dataset  # type: ignore
+        self.dataset: DFDataSet = self.trainer.datamodule.dataset  # type: ignore
         for k, v in self.dataset.stats.items():
             self.model.register_buffer(
-                k, v.detach().clone().type(torch.get_default_dtype()).to(self.device) if isinstance(v, torch.Tensor) else torch.tensor(v, device=self.device)
+                k,
+                (
+                    v.detach().clone().type(torch.get_default_dtype()).to(self.device)
+                    if isinstance(v, torch.Tensor)
+                    else torch.tensor(v, device=self.device)
+                ),
             )
+        # If `ckpt_path` is given, checkpoint loading is executed after this function and overrides stats above,
+        # hence the consistency between different training datasets is guaranteed.
 
     def training_step(self, batch, batch_idx):
         (
