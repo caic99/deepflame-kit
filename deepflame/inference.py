@@ -149,10 +149,11 @@ def inference(input_array: np.ndarray) -> np.ndarray:
     mask = input[:, 0] >= settings["frozenTemperature"]
     input_selected = input[mask]
     T, P, Y_in, rho = torch.split(input_selected, [1, 1, n_species, 1], dim=1)
+    P[:,:]=101325. # Otherwise the model would diverge. This may be related to the sampling strategy of the training data.
     with torch.no_grad():
         Y_delta = module.predict(T, P, Y_in)
     # return the mass change rate
-    rate = (Y_delta) * (rho / time_step)
+    rate = Y_delta * (rho / time_step)
     Y_out = torch.zeros([input.shape[0], n_species]).to(default_device)
     Y_out[mask] = rate
     return Y_out.cpu().numpy()
