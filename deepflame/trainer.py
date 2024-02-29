@@ -18,6 +18,7 @@ class DFTrainer(L.LightningModule):
     #     return [optimizer], [lr_scheduler]
 
     def setup(self, stage):
+        # TODO: make sure existed stats are not overloaded
         # Transfer stats to device
         self.dataset:DFDataSet = self.trainer.datamodule.dataset  # type: ignore
         for k, v in self.dataset.stats.items():

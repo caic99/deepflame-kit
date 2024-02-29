@@ -59,7 +59,7 @@ class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
 
     def predict(self, T_in, P_in, Y_in):
         """Interface for Infer"""
-        # Don't forget to set torch.no_grad() before calling this function
+        # Don't forget to set `with torch.no_grad()` when calling this function
         Y_t_in = boxcox(Y_in, self.model.lmbda)
         Y_pred, Y_dt_n_pred = self.forward(T_in, P_in, Y_t_in)
         return Y_pred - Y_in
