@@ -53,7 +53,7 @@ class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
             self.model.Y_dt_mean,
             self.model.Y_dt_std,
         )
-        Y_dt_pred[:,self.model.inert_index] = 0
+        Y_dt_pred[:, self.model.inert_index] = 0
         Y_t_pred = Y_t_in + Y_dt_pred
         Y_pred = inv_boxcox(Y_t_pred, self.model.lmbda)
         # Y_pred[Y_pred < 0] = 0
@@ -66,4 +66,10 @@ class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
         # Don't forget to set `with torch.no_grad()` when calling this function
         Y_t_in = boxcox(Y_in, self.model.lmbda)
         Y_pred, Y_dt_n_pred = self.forward(T_in, P_in, Y_t_in)
+        # Normalize ΣY = 1 while maintaining the inert gas fraction
+        factor = (1 - Y_pred[:, self.model.inert_index]) / (
+            Y_pred.sum(dim=1) - Y_pred[:, self.model.inert_index]
+        )
+        Y_pred *= factor.unsqueeze(dim=-1)
+        Y_pred[:, self.model.inert_index] /= factor  # keep inert unchanged
         return Y_pred - Y_in
