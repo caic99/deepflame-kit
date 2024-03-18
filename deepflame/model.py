@@ -21,6 +21,8 @@ class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
     def __init__(
         self,
         n_species: int = 41,
+        inert_index: int = -1,
+        lmbda: float = 0.1,
         layer_sizes: List[int] = [512, 256, 128],
     ):  # TODO: add inert gas index
         super().__init__()
@@ -32,7 +34,7 @@ class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
         self.model.forward = lambda x: torch.stack(
             [m(x) for m in self.model], dim=2
         ).squeeze()
-
+        self.model.lmbda = lmbda
         print(self.model)
         # model = torch.compile(self.model) # TODO: add config on torch.compile
         self.save_hyperparameters()  # available if using LightningModule as base class
@@ -58,7 +60,9 @@ class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
         return Y_pred, Y_dt_n_pred
 
     def predict(self, T_in, P_in, Y_in):
-        """Interface for Infer"""
+        """Interface for Infer.
+        Note: Y_in contains inert gas.
+        """
         # Don't forget to set `with torch.no_grad()` when calling this function
         Y_t_in = boxcox(Y_in, self.model.lmbda)
         Y_pred, Y_dt_n_pred = self.forward(T_in, P_in, Y_t_in)

@@ -1,18 +1,21 @@
 # lightning.pytorch==2.1.3
-seed_everything: 42 # Magic number
-model:
+data_config: &data_config # Those info are used for model and dataloader.
   n_species: 41 # Should match with dataset
+  inert_index: -1 # Index of inert specie
+  lmbda: 0.1 # For lambda of box-cox transformation
+
+model:
+  <<: *data_config
   layer_sizes:
     - 512
     - 256
     - 128
-ckpt_path: null
+# ckpt_path: "/root/deepflame-kit/examples/hy41/dfnn/rsw0yvsf/checkpoints/epoch=145-step=40004.ckpt"
 
 data:
+  <<: *data_config
   batch_size: 1024
   num_workers: 6
-  lmbda: 0.1 # For lambda of box-cox transformation
-
   # data_path: dataset.npy
   # config_path: HyChem41s.yaml
   # formation_enthalpies_path: formation_enthalpies.npy
@@ -39,6 +42,7 @@ lr_scheduler:
   #   gamma: 0.5
   #   verbose: true
 
+seed_everything: 42 # Magic number
 # > python main.py fit --config config.yaml --trainer.max_epochs 100
 
 # https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.trainer.trainer.Trainer.html
@@ -57,7 +61,7 @@ trainer:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
       project: dfnn
-      # mode: disabled # Debug
+      mode: disabled # Debug
   log_every_n_steps: null
   val_check_interval: null
 

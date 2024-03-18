@@ -10,12 +10,15 @@ from deepflame.utils import boxcox, inv_boxcox, normalize
 
 
 class DFDataSet(Dataset):
+
     def __init__(
         self,
         data_path: Path,
         config_path: Path,
         formation_enthalpies_path: Path,
-        lmbda=0.05,
+        n_species: int,
+        inert_index: int,
+        lmbda: float,
     ):
         super().__init__()
         # Check n_species
@@ -23,6 +26,8 @@ class DFDataSet(Dataset):
         assert len(self.config["phases"]) == 1, "Only single phase is supported"
         phase = self.config["phases"][0]
         self.n_species = len(phase["species"])
+        assert self.n_species == n_species, "n_species in config file does not match dataset"
+        self.inert_index = inert_index
         # self.T: float = phase["state"]["T"]
         # self.P: float = phase["state"]["P"]
 
@@ -79,7 +84,6 @@ class DFDataSet(Dataset):
             set_stats(self, f"{key}_mean", value.mean(dim=0))
             set_stats(self, f"{key}_std", value.std(dim=0))
 
-        set_stats(self, "lmbda", lmbda)
         set_stats(self, "formation_enthalpies", formation_enthalpies)
         set_stats(self, "time_step", time_step)
         set_norm_stats(self, "T_in", T_in)
@@ -98,19 +102,21 @@ class DFDataSet(Dataset):
         return frame.split(self.indices)
 
 
-class DFDataModule(L.LightningDataModule):
+class DFDataModule(L.LightningDataModule): # TODO: Remove default values and config by file
     def __init__(
         self,
         data_path=Path("dataset.npy"),
         config_path=Path("HyChem41s.yaml"),
         formation_enthalpies_path=Path("formation_enthalpies.npy"),
+        n_species=41,
+        inert_index=-1,
         lmbda=0.05,
         batch_size=32,
         num_workers=4,
     ):
         super().__init__()
         self.dataset = DFDataSet(
-            data_path, config_path, formation_enthalpies_path, lmbda
+            data_path, config_path, formation_enthalpies_path,n_species, inert_index, lmbda,
         )
         self.train_set, self.val_set, self.test_set = random_split(
             self.dataset, [0.7, 0.2, 0.1]
