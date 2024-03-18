@@ -31,9 +31,8 @@ class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
         )
         layers = [2 + n_species, *layer_sizes, 1]
         self.model = nn.ModuleList([MLP(layers) for _ in range(n_species)])
-        self.model.forward = lambda x: torch.stack(
-            [m(x) for m in self.model], dim=2
-        ).squeeze()
+        self.model.forward = lambda x: torch.cat([m(x) for m in self.model], dim=1)
+        self.model.inert_index = inert_index
         self.model.lmbda = lmbda
         print(self.model)
         # model = torch.compile(self.model) # TODO: add config on torch.compile
@@ -54,6 +53,7 @@ class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
             self.model.Y_dt_mean,
             self.model.Y_dt_std,
         )
+        Y_dt_pred[:,self.model.inert_index] = 0
         Y_t_pred = Y_t_in + Y_dt_pred
         Y_pred = inv_boxcox(Y_t_pred, self.model.lmbda)
         # Y_pred[Y_pred < 0] = 0
