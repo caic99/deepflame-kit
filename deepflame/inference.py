@@ -67,16 +67,6 @@ def load_lightning_model(
     from deepflame.data import DFDataModule
     from deepflame.model import DFNN
 
-    assert (
-        settings["torch"] == True
-    ), f"torch is not set to 'on' in {property_config_path}"
-    if settings["GPU"] == True:
-        assert (
-            torch.cuda.is_available()
-        ), f"GPU is set to 'on' but not available in {property_config_path}"
-    if model_config_path is None:
-        model_config_path = settings["torchModel"]
-
     cli_args = f"predict --config {model_config_path} --ckpt_path {checkpoint_path} --trainer.limit_predict_batches=0 --trainer.logger=False".split()
     # Generate model from config file
     cli = LightningCLI(
@@ -122,19 +112,39 @@ property_config_path = (
 
 property_config = parse_properties(property_config_path)
 settings = property_config["TorchSettings"]
-
+frozen_temperature = settings["frozenTemperature"]
+checkpoint_path = settings["torchModel"]
 # Inference API: https://github.com/deepmodeling/deepflame-dev/blob/master/src/dfChemistryModel/pytorchFunctions.H
 # Currently `inference()` is called directly from C++,
 # so we have to explicitly put the model in the scope of this file.
 
 model_config_path="/root/deepflame-kit/examples/hy41/config.yaml"
-checkpoint_path="/root/deepflame-kit/examples/hy41/dfnn/hnhigfo0/checkpoints/epoch=498-step=136726.ckpt"
+# checkpoint_path = "/root/deepflame-kit/examples/hy41/dfnn/rsw0yvsf/checkpoints/epoch=145-step=40004.ckpt"
+checkpoint_path = "/root/deepflame-kit/examples/hy41/dfnn/lnn7u6iu/checkpoints/epoch=7-step=2192.ckpt"
 # TODO: extract from config file
+
+assert settings["torch"] == True, f"torch is not set to 'on' in {property_config_path}"
+if settings["GPU"] == True:
+    assert (
+        torch.cuda.is_available()
+    ), f"GPU is set to 'on' in {property_config_path}, but no GPU is available."
+
+# Check inert index matches
+print("Model config path: ", model_config_path)
+model_config = yaml.load(open(model_config_path, "r"), Loader=yaml.FullLoader)
+mechanism_file = property_config["CanteraMechanismFile"]
+print("Cantera mechanism file: ", mechanism_file)
+mechanism = yaml.load(open(mechanism_file, "r"), Loader=yaml.FullLoader)
+species = mechanism["phases"][0]["species"] # ["name"] == "gas"
+inert_specie = property_config["inertSpecie"]
+print("Inert specie: ", inert_specie)
+assert species[model_config["data"]["inert_index"]] == inert_specie, f"Inert specie does not match"
 
 default_device = "cuda:0"
 # torch.set_default_device(default_device)
 load_model=load_torch_model
 # load_model = load_lightning_model
+print("Checkpoint path: ", checkpoint_path)
 module: torch.nn.Module = load_model(model_config_path, checkpoint_path)
 module = module.to(default_device).eval()
 n_species: int = module.model.formation_enthalpies.shape[0]
@@ -146,7 +156,7 @@ lmbda: float = module.model.lmbda
 def inference(input_array: np.ndarray) -> np.ndarray:
     # input shape: batch * [T, P, Y_ns, rho] (flattened to 1D)
     input = torch.Tensor(input_array).to(default_device).reshape(-1, 1 + 1 + n_species + 1)  # .abs()
-    mask = input[:, 0] >= settings["frozenTemperature"]
+    mask = input[:, 0] >= frozen_temperature
     input_selected = input[mask]
     T, P, Y_in, rho = torch.split(input_selected, [1, 1, n_species, 1], dim=1)
     P[:,:]=101325. # Otherwise the model would diverge. This may be related to the sampling strategy of the training data.
