@@ -24,7 +24,7 @@ class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
         inert_index: int = -1,
         lmbda: float = 0.1,
         layer_sizes: List[int] = [512, 256, 128],
-    ):  # TODO: add inert gas index
+    ):
         super().__init__()
         self.example_input_array = torch.zeros(1, 2 + n_species).split(
             [1, 1, n_species], dim=1
@@ -42,6 +42,7 @@ class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
     def forward(self, T_in, P_in, Y_t_in):
         T_norm_in = normalize(T_in, self.model.T_in_mean, self.model.T_in_std)
         P_norm_in = normalize(P_in, self.model.P_in_mean, self.model.P_in_std)
+        P_norm_in[...] = 0 # HACK: fix P_in to 0
         Y_n_in = normalize(
             Y_t_in,
             self.model.Y_t_in_mean,
