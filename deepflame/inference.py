@@ -106,9 +106,7 @@ def load_torch_model(
     return module
 
 
-property_config_path = (
-    "/root/DeepFlame-examples/1Dflame/Tu800K-Phi1.0/constant/CanteraTorchProperties"
-)
+property_config_path = "./constant/CanteraTorchProperties"
 
 property_config = parse_properties(property_config_path)
 settings = property_config["TorchSettings"]
