@@ -74,7 +74,7 @@ class DFDataSet(Dataset):
         def set_stats(
             self: DFDataSet,
             key: str,
-            value: torch.Tensor | int | float,
+            value # : torch.Tensor | int | float,
         ):
             self.stats[key] = value
 

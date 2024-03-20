@@ -92,10 +92,16 @@ def load_torch_model(
     state_dict = torch.load(checkpoint_path)["state_dict"]
     missing_keys, unexpected_keys = module.load_state_dict(state_dict, strict=False)
     assert len(missing_keys) == 0, f"{missing_keys=}"
+
+    def removeprefix(text, prefix): # Compatibility to Python 3.8
+        if text.startswith(prefix):
+            return text[len(prefix):]
+        else:
+            return text
     for k in unexpected_keys:
         v = state_dict[k]
         module.model.register_buffer(
-            k.removeprefix("model."),
+            removeprefix(k, "model."),
             (
                 v.detach().clone().type(torch.get_default_dtype())
                 if isinstance(v, torch.Tensor)
