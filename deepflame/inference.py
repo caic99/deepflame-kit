@@ -117,15 +117,12 @@ property_config_path = "./constant/CanteraTorchProperties"
 property_config = parse_properties(property_config_path)
 settings = property_config["TorchSettings"]
 frozen_temperature = settings["frozenTemperature"]
-checkpoint_path = settings["torchModel"]
 # Inference API: https://github.com/deepmodeling/deepflame-dev/blob/master/src/dfChemistryModel/pytorchFunctions.H
 # Currently `inference()` is called directly from C++,
 # so we have to explicitly put the model in the scope of this file.
 
-model_config_path="/root/deepflame-kit/examples/hy41/config.yaml"
-# checkpoint_path = "/root/deepflame-kit/examples/hy41/dfnn/rsw0yvsf/checkpoints/epoch=145-step=40004.ckpt"
-checkpoint_path = "/root/deepflame-kit/examples/hy41/dfnn/lnn7u6iu/checkpoints/epoch=7-step=2192.ckpt"
-# TODO: extract from config file
+model_config_path = settings["torchModelConfig"]
+checkpoint_path = settings["torchModelWeight"]
 
 assert settings["torch"] == True, f"torch is not set to 'on' in {property_config_path}"
 if settings["GPU"] == True:

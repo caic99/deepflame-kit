@@ -36,7 +36,8 @@ TorchSettings
     torch             on;
     GPU               on;
     log               on;
-    torchModel        "DNN_model.pt"; 
+    torchModelConfig   "../hy41/config.yaml";
+    torchModelWeight  "../hy41/dfnn.ckpt";
     frozenTemperature 810;
     inferenceDeltaTime 1e-7;
     coresPerNode      4;
