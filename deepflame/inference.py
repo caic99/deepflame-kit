@@ -168,3 +168,12 @@ def inference(input_array: np.ndarray) -> np.ndarray:
     Y_out = torch.zeros([input.shape[0], n_species]).to(default_device)
     Y_out[mask] = rate
     return Y_out.cpu().numpy()
+
+def test_inference():
+    # create an array with shape (batch, 1 + 1 + n_species + 1)
+    input_array = np.random.rand(2, 1 + 1 + n_species + 1)
+    output = inference(input_array)
+    print("inferenced output shape: ", output.shape)
+if __name__ == "__main__":
+    # test with `python inference.py`
+    test_inference()
