@@ -16,8 +16,10 @@ class MLP(nn.Sequential):
                 layers.append(activation())
         super().__init__(*layers)
 
-
-class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
+# To infer without Lightning,
+# i. use `nn.Module` instead of `DFTrainer` as the base class for `DFNN` below, and
+# ii. remove `from deepflame.trainer import DFTrainer` of this file.
+class DFNN(DFTrainer):
     def __init__(
         self,
         n_species: int = 41,
@@ -36,7 +38,10 @@ class DFNN(DFTrainer):  # It is possible to use nn.Module as the base class
         self.model.lmbda = lmbda
         print(self.model)
         # model = torch.compile(self.model) # TODO: add config on torch.compile
-        self.save_hyperparameters()  # available if using LightningModule as base class
+        try:
+            self.save_hyperparameters()
+        except AttributeError: # is only an `nn.Module`
+            pass
 
     # @torch.compile()
     def forward(self, T_in, P_in, Y_t_in):
